@@ -76,6 +76,7 @@ function requestBluetoothDevice() {
     filters: [
         {
           acceptAllDevices: true,
+          name: 'HC-05',
           optionalServices: ['battery_service']
         }
     ],
