@@ -15,6 +15,7 @@ disconnectButton.addEventListener('click', function() {
   disconnect();
 });
 
+
 // Handle form submit event
 sendForm.addEventListener('submit', function(event) {
   event.preventDefault(); // Prevent form sending
@@ -24,9 +25,35 @@ sendForm.addEventListener('submit', function(event) {
 });
 
 
-// Send data to the connected device
 function send(data) {
-  //
+  data = String(data);
+
+  if (!data || !characteristicCache) {
+    return;
+  }
+
+  data += '\n';
+
+  if (data.length > 20) {
+    let chunks = data.match(/(.|[\r\n]){1,20}/g);
+
+    writeToCharacteristic(characteristicCache, chunks[0]);
+
+    for (let i = 1; i < chunks.length; i++) {
+      setTimeout(() => {
+        writeToCharacteristic(characteristicCache, chunks[i]);
+      }, i * 100);
+    }
+  }
+  else {
+    writeToCharacteristic(characteristicCache, data);
+  }
+
+  log(data, 'out');
+}
+
+function writeToCharacteristic(characteristic, data) {
+  characteristic.writeValue(new TextEncoder().encode(data));
 }
 
 //----------------------------- Added Code: connect to bluetooth device -----------------------//
@@ -89,7 +116,13 @@ function disconnect() {
     }
   }
 
-  characteristicCache = null;
+  // Added condition
+  if (characteristicCache) {
+    characteristicCache.removeEventListener('characteristicvaluechanged',
+        handleCharacteristicValueChanged);
+    characteristicCache = null;
+  }
+
   deviceCache = null;
 }
 //-----------------------------------------------------------------//
@@ -131,6 +164,9 @@ function startNotifications(characteristic) {
   return characteristic.startNotifications().
       then(() => {
         log('Notifications started');
+        // Added line
+        characteristic.addEventListener('characteristicvaluechanged',
+            handleCharacteristicValueChanged);
       });
 }
 
@@ -138,4 +174,31 @@ function startNotifications(characteristic) {
 function log(data, type = '') {
   terminalContainer.insertAdjacentHTML('beforeend',
       '<div' + (type ? ' class="' + type + '"' : '') + '>' + data + '</div>');
+}
+
+// Intermediate buffer for incoming data
+let readBuffer = '';
+
+// Data receiving
+function handleCharacteristicValueChanged(event) {
+  let value = new TextDecoder().decode(event.target.value);
+
+  for (let c of value) {
+    if (c === '\n') {
+      let data = readBuffer.trim();
+      readBuffer = '';
+
+      if (data) {
+        receive(data);
+      }
+    }
+    else {
+      readBuffer += c;
+    }
+  }
+}
+
+// Received data handling
+function receive(data) {
+  log(data, 'in');
 }
