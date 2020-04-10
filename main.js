@@ -23,15 +23,6 @@ sendForm.addEventListener('submit', function(event) {
   inputField.focus();     // Focus on text field
 });
 
-// Launch Bluetooth device chooser and connect to the selected
-function connect() {
-  //
-}
-
-// Disconnect from the connected device
-function disconnect() {
-  //
-}
 
 // Send data to the connected device
 function send(data) {
@@ -60,10 +51,48 @@ function requestBluetoothDevice() {
       then(device => {
         log('"' + device.name + '" bluetooth device selected');
         deviceCache = device;
+      
+        // Add device listener for bluetooth disconnect so we can maintain connection
+        deviceCache.addEventListener('gattserverdisconnected',
+            handleDisconnection);
 
         return deviceCache;
       });
 }
+
+// handles the problem of bluetooth disconnecting for no reason
+// tries to reconnect once
+function handleDisconnection(event) {
+  let device = event.target;
+
+  log('"' + device.name +
+      '" bluetooth device disconnected, trying to reconnect...');
+
+  connectDeviceAndCacheCharacteristic(device).
+      then(characteristic => startNotifications(characteristic)).
+      catch(error => log(error));
+}
+//---------------- disconnect keeps the browser from re-connecting with the bluetooth device
+function disconnect() {
+  if (deviceCache) {
+    log('Disconnecting from "' + deviceCache.name + '" bluetooth device...');
+    deviceCache.removeEventListener('gattserverdisconnected',
+        handleDisconnection);
+
+    if (deviceCache.gatt.connected) {
+      deviceCache.gatt.disconnect();
+      log('"' + deviceCache.name + '" bluetooth device disconnected');
+    }
+    else {
+      log('"' + deviceCache.name +
+          '" bluetooth device is already disconnected');
+    }
+  }
+
+  characteristicCache = null;
+  deviceCache = null;
+}
+//-----------------------------------------------------------------//
 
 // Characteristic object cache
 let characteristicCache = null;
