@@ -1,2 +1,2 @@
 # bluetoothController
-control a arduino using javascript
+control an arduino using javascript
