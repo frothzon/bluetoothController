@@ -68,91 +68,25 @@ function connect() {
       then(characteristic => startNotifications(characteristic)).
       catch(error => log(error));
 }
-
+//-------------------- Connect to bluetooth device -----------------------//
 function requestBluetoothDevice() {
   log('Requesting bluetooth device...');
 
-	//----------- Filter Bluetooth -------------//
-	let filters = [];
-	let filterService = document.querySelector('#service').value;
-	if (filterService.startsWith('0x')) {
-	filterService = parseInt(filterService);
-	}
-	if (filterService) {
-	filters.push({services: [filterService]});
-	}
-
-	let filterName = document.querySelector('#name').value;
-	if (filterName) {
-	filters.push({name: filterName});
-	}
-
-	let filterNamePrefix = document.querySelector('#namePrefix').value;
-	if (filterNamePrefix) {
-	filters.push({namePrefix: filterNamePrefix});
-	}
-
-	let options = {};
-	if (document.querySelector('#allDevices').checked) {
-	options.acceptAllDevices = true;
-	} else {
-	options.filters = filters;
-	}
-	//------------ Request Bluetooth Device ------------------//
-  return navigator.bluetooth.requestDevice(options).
+  return navigator.bluetooth.requestDevice({
+    filters: [{services: [0xFFE0]}],
+  }).
       then(device => {
         log('"' + device.name + '" bluetooth device selected');
         deviceCache = device;
-      
-        // Add device listener for bluetooth disconnect so we can maintain connection
+
+        // Added line
         deviceCache.addEventListener('gattserverdisconnected',
             handleDisconnection);
 
         return deviceCache;
       });
 }
-/*
-function onButtonClick() {
-  let filters = [];
 
-  let filterService = document.querySelector('#service').value;
-  if (filterService.startsWith('0x')) {
-    filterService = parseInt(filterService);
-  }
-  if (filterService) {
-    filters.push({services: [filterService]});
-  }
-
-  let filterName = document.querySelector('#name').value;
-  if (filterName) {
-    filters.push({name: filterName});
-  }
-
-  let filterNamePrefix = document.querySelector('#namePrefix').value;
-  if (filterNamePrefix) {
-    filters.push({namePrefix: filterNamePrefix});
-  }
-
-  let options = {};
-  if (document.querySelector('#allDevices').checked) {
-    options.acceptAllDevices = true;
-  } else {
-    options.filters = filters;
-  }
-
-  log('Requesting Bluetooth Device...');
-  log('with ' + JSON.stringify(options));
-  navigator.bluetooth.requestDevice(options)
-  .then(device => {
-    log('> Name:             ' + device.name);
-    log('> Id:               ' + device.id);
-    log('> Connected:        ' + device.gatt.connected);
-  })
-  .catch(error => {
-    log('Argh! ' + error);
-  });
-}
-*/
 // handles the problem of bluetooth disconnecting for no reason
 // tries to reconnect once
 function handleDisconnection(event) {
